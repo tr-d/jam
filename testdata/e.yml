@@ -1,0 +1,6 @@
+title: e.yml
+meta:
+  e: e.yml will clobber list
+test:
+  fields:
+    list: null

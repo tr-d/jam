@@ -1,0 +1,20 @@
+type T struct {
+	Meta struct {
+		A string `json:"a"`
+	} `json:"meta"`
+	Test struct {
+		Fields struct {
+			Bool  bool     `json:"bool"`
+			Date  string   `json:"date"`
+			Float float64  `json:"float"`
+			Int   float64  `json:"int"`
+			Items []string `json:"items"`
+			List  []struct {
+				A string `json:"a"`
+			} `json:"list"`
+			LongString  string `json:"longString"`
+			ShortString string `json:"shortString"`
+		} `json:"fields"`
+	} `json:"test"`
+	Title string `json:"title"`
+}

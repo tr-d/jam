@@ -1,0 +1,1 @@
+{"meta":{"a":"a.yml is a base sample for testing jam"},"test":{"fields":{"bool":false,"date":"2000-01-01","float":1,"int":0,"items":["a foo","a baz"],"list":[{"a":"foo"},{"a":"baz"}],"longString":"0 AAA\n1 AAA\n2 AAA\n","shortString":"aaa"}},"title":"a.yml"}

@@ -1,0 +1,10 @@
+title: d.yml
+meta:
+  d: d.yml will mess with lists
+test:
+  fields:
+    items:
+      - d foo
+    list:
+      - d: foo
+      - d: baz

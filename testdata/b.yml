@@ -1,0 +1,10 @@
+title: b.yml
+meta:
+  b: b.yml will replace the string fields of a.yml
+test:
+  fields:
+    shortString: bbb
+    longString: |
+      0 BBB
+      1 BBB
+      2 BBB

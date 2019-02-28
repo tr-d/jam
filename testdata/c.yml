@@ -1,0 +1,9 @@
+title: c.yml
+meta:
+  c: c.yml will replace the date, bool, and number fields of a.yml
+test:
+  fields:
+    date:	1970-07-07
+    bool: true
+    int: 27
+    float: 3.14159
