@@ -267,7 +267,20 @@ func main() {
 	}
 }
 
+var (
+	arg0    = filepath.Base(os.Args[0])
+	version = "unknown"
+)
+
 const (
+	cmdFlags = `
+  -h	halps
+  -H	moar halps
+  -X	les exemples
+  -v	version
+
+`
+
 	halps = `Usage of %[1]s:
 
     	%[1]s [flags]
@@ -280,7 +293,6 @@ Pipeline:
   Flags form a processing pipeline for a generic data tree and an output
   buffer.  Flags may modify the tree or write to the buffer.  Flags are
   applied from left to right.
-
 
 Inputs (in):
   Inputs are @file, - for stdin, or a literal string.
@@ -296,21 +308,17 @@ Inputs (in):
   Exec (-x <in>) executes a go text template input against the tree.  Input
   format must be a valid go text template.  See https://godoc.org/text/template
 
-
 Encoding (enc):
   Encoding (-e <enc>) writes yaml, json, toml, go, or struct to the output
   buffer.  Values y, j, t, g, s, are also acceptable if you are feeling lazy.
-
 
 Outputs (out):
   Output (-o <out>) goes to file or stdout (-). If nothing has been written
   to the ouput buffer, an implicit encode to yaml occurs (-e "yaml").
 
-
 Queries:
   Query (-q <query>) applies a JMESPath query to the tree. See
   http://jmespath.org/
-
 
 Filters (filt):
   Queries extract from or otherwise transform the tree.  In contrast, filters
@@ -338,22 +346,21 @@ Filters (filt):
 
   There are four filter behaviours.
 
-  Plain (-f <filt>)
-  	Everything not matching is discarded.
-  	The query matches from the root of the tree.
+  * Plain (-f <filt>)
+    + The query matches from the root of the tree.
+    + Everything not matching is discarded.
 
-  Inverted (-F <filt>)
-  	Everything matching is discarded.
-  	The query matches from the root of the tree.
+  * Inverted (-F <filt>)
+    + The query matches from the root of the tree.
+    + Everything matching is discarded.
 
-  Recursive (-r <filt>)
-  	Everything not matching is discarded.
-  	The query matches from anywhere in the tree.
+  * Recursive (-r <filt>)
+    + The query matches from anywhere in the tree.
+    + Everything not matching is discarded.
 
-  Recursive Inverted (-R <filt>)
-  	Everything matching is discarded.
-  	The query matches from anywhere in the tree.
-
+  * Recursive Inverted (-R <filt>)
+    + The query matches from anywhere in the tree.
+    + Everything matching is discarded.
 
 Implicit Flags:
   In certain cases, %[1]s will make some assumtions about what you want to do.
@@ -387,80 +394,67 @@ Implicit Flags:
   	%[1]s -m @file1 -m @file1 -q blep
 
   or, merge file1, merge file2, query blep.
-
 `
 
 	exemples = `
-Les exemples sont très nécessaires:
-  json to yaml
-  	%[1]s '{"blep":7,"mlem":9}'
-  implied
-  	%[1]s -m '{"blep":7,"mlem":9}' -e yaml -o -
-  output
-  	blep: 7
-  	mlem: 9
+  Les exemples sont très nécessaires!
 
-  toml to yaml
-  	%[1]s 'cute = "blep"'
-  implied
-  	%[1]s -m 'cute = "blep"' -e yaml -o -
-  output
-  	cute: blep
+Convert json to yaml:
+  %[1]s '{"blep":7,"mlem":9}'
 
-  merge
-  	%[1]s -m '{"blep":2,"mlem":6}' -m '{"blep":4}' -e json
-  implied
-  	%[1]s -m '{"blep":2,"mlem":6}' -m '{"blep":4}' -e json -o -
-  output
-  	{"blep":4,"mlem":6}
+  # implied: %[1]s -m '{"blep":7,"mlem":9}' -e yaml -o -
+  # output:
+  # blep: 7
+  # mlem: 9
 
-  diff
-  	%[1]s -m '{"blep":2,"mlem":6}' -d '{"blep":4,"mlem":6}' -e json
-  implied
-  	%[1]s -m '{"blep":2,"mlem":6}' -d '{"blep":4,"mlem":6}' -e json -o -
-  output
-  	{"blep":4}
+Convert toml to yaml:
+  %[1]s 'cute = "blep"'
 
-  filter
-  	%[1]s -m '{"cute":{"blep":3,"mlem":5}}' -f cute.blep
-  implied
-  	%[1]s -m '{"cute":{"blep":3,"mlem":5}}' -f cute.blep -e yaml -o -
-  output
-  	cute:
-  	  blep: 3
+  # implied: %[1]s -m 'cute = "blep"' -e yaml -o -
+  # output:
+  # cute: blep
 
-  template
-  	%[1]s -m '["blep","mlem"]' -x '{{range .}}kitty gon {{println .}}{{end}}'
-  implied
-  	%[1]s -m '["blep","mlem"]' -x '{{range .}}kitty gon {{println .}}{{end}}' -o -
-  output
-  	kitty gon blep
-  	kitty gon mlem
+Merge:
+  %[1]s -m '{"blep":2,"mlem":6}' -m '{"blep":4}' -e json
 
-  struct
-  	curl https://api.github.com/user | %[1]s -e struct
-  implied
-  	%[1]s -m - -e struct -o -
-  output
-  	type T struct {
-  	        DocumentationUrl string ` + "`" + `json:"documentation_url"` + "`" + `
-  	        Message          string ` + "`" + `json:"message"` + "`" + `
-  	}
+  # implied: %[1]s -m '{"blep":2,"mlem":6}' -m '{"blep":4}' -e json -o -
+  # output:
+  # {"blep":4,"mlem":6}
 
+Diff:
+  %[1]s -m '{"blep":2,"mlem":6}' -d '{"blep":4,"mlem":6}' -e json
+
+  # implied: %[1]s -m '{"blep":2,"mlem":6}' -d '{"blep":4,"mlem":6}' -e json -o -
+  # output:
+  # {"blep":4}
+
+Filter:
+  %[1]s -m '{"cute":{"blep":3,"mlem":5}}' -f cute.blep
+
+  # implied: %[1]s -m '{"cute":{"blep":3,"mlem":5}}' -f cute.blep -e yaml -o -
+  # output:
+  # cute:
+  #   blep: 3
+
+Template:
+  %[1]s -m '["blep","mlem"]' -x '{{range .}}kitty gon {{println .}}{{end}}'
+
+  # implied:
+  # %[1]s -m '["blep","mlem"]' -x '{{range .}}kitty gon {{println .}}{{end}}' -o -
+  # output:
+  # kitty gon blep
+  # kitty gon mlem
+
+Convert to struct:
+  curl https://api.github.com/user | %[1]s -e struct
+
+  # implied: %[1]s -m - -e struct -o -
+  # output:
+  # type T struct {
+  #         DocumentationUrl string ` + "`" + `json:"documentation_url"` + "`" + `
+  #         Message          string ` + "`" + `json:"message"` + "`" + `
+  # }
 `
-
-	gotFlags = `
-  -h	halps
-  -H	moar halps
-  -X	les exemples
-  -v	version
-
-`
-)
-
-var (
-	arg0    = filepath.Base(os.Args[0])
-	version = "unknown"
 )
 
 func usage() {
@@ -473,5 +467,5 @@ func usage() {
 		}
 		fmt.Fprintln(fo)
 	}
-	fmt.Fprint(fo, gotFlags)
+	fmt.Fprint(fo, cmdFlags)
 }
