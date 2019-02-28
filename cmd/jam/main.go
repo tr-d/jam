@@ -257,11 +257,11 @@ func main() {
 	log.SetFlags(0)
 	var (
 		pb pretty.Buffer
-		tx = &jam.Jam{}
+		j  = &jam.Jam{}
 	)
 	for _, o := range ops {
 		f := *o.fn
-		if err := f(tx, &pb, o.p); err != nil {
+		if err := f(j, &pb, o.p); err != nil {
 			log.Fatal(err)
 		}
 	}
