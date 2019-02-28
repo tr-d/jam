@@ -5,7 +5,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"golang.org/x/crypto/ssh/terminal"
@@ -15,7 +14,7 @@ const prettyVersion = "-pretty"
 
 func banner() {
 	var b, t string
-	switch filepath.Base(arg0) {
+	switch arg0 {
 	case "jam", "jam.exe":
 		b = `
   	     ██    █████    ███    ███
@@ -47,7 +46,12 @@ func banner() {
 func halpsPrint(s string) {
 	fmt.Fprintf(os.Stderr, "Halps %[1]s:\n", arg0)
 	banner()
-	for _, l := range strings.Split(fmt.Sprintf(s, arg0), "\n") {
+	s = fmt.Sprintf(s, arg0)
+	if !terminal.IsTerminal(int(os.Stderr.Fd())) {
+		fmt.Fprint(os.Stderr, s)
+		return
+	}
+	for _, l := range strings.Split(s, "\n") {
 		switch {
 		case l == "", l[0] == ' ', l[len(l)-1] != ':':
 			fmt.Fprintln(os.Stderr, l)

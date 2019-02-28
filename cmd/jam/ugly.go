@@ -5,14 +5,13 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 )
 
 const prettyVersion = "-ugly"
 
 func banner() {
 	var b, t string
-	switch filepath.Base(arg0) {
+	switch arg0 {
 	case "jam", "jam.exe":
 		b = `
   	     ██    █████    ███    ███
