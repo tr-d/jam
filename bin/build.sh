@@ -28,7 +28,7 @@ f test
 
 h cov "coverage"
 go tool cover -func=c.out
-if hash goveralls >/dev/null 2>&1; then
+if [ "$TRAVIS" = true ] && hash goveralls >/dev/null 2>&1; then
         goveralls -coverprofile=c.out -service=travis-ci || echo "warning: goveralls failed!"
 fi
 f cov
