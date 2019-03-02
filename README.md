@@ -1,6 +1,7 @@
 # jam
 
 [![Build Status](https://travis-ci.org/tr-d/jam.svg?branch=master)](https://travis-ci.org/tr-d/jam)
+[![Coverage Status](https://coveralls.io/repos/github/tr-d/jam/badge.svg)](https://coveralls.io/github/tr-d/jam)
 
 if structured data is scones and you are clotted cream, this is jam
 

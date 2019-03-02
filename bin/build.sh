@@ -3,7 +3,7 @@
 die() { echo "oh noes! $*"; exit 1; }
 
 h() {
-        if [ "$TRAVIS" = "true" ]; then
+        if [ "$TRAVIS" = true ]; then
                 printf "travis_fold:start:%s\033[33;1m%s\033[0m" "$1" "$2"
         else
                 printf "# %s\n" "$2"
@@ -11,7 +11,7 @@ h() {
 }
 
 f() {
-        if [ "$TRAVIS" = "true" ]; then
+        if [ "$TRAVIS" = true ]; then
                 printf "\ntravis_fold:end:%s\r" "$1"
         else
                 printf "\n"
@@ -23,11 +23,14 @@ if ! [ -r jam.go ]; then
 fi
 
 h test "run tests"
-go test -v -coverprofile=c.out . || die "test failed"
+go test -v -covermode=count -coverprofile=c.out . || die "test failed"
 f test
 
 h cov "coverage"
 go tool cover -func=c.out
+if hash goveralls >/dev/null 2>&1; then
+        goveralls -coverprofile=c.out -service=travis-ci || echo "warning: goveralls failed!"
+fi
 f cov
 
 h init "init"
