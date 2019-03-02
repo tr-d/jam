@@ -152,7 +152,7 @@ func (f filterer) filter(v interface{}, path string) (interface{}, bool) {
 				a, aok := f.filter(v[i], path)
 				b, bok := f.filter(a, f.p)
 				switch {
-				case bok:
+				case aok && bok:
 					o = append(o, b)
 				case aok:
 					o = append(o, a)
@@ -165,8 +165,8 @@ func (f filterer) filter(v interface{}, path string) (interface{}, bool) {
 				if tmp, ok := f.filter(v[i], f.p); ok {
 					o = append(o, tmp)
 				}
-			case f.i:
-				o = append(o, v)
+			case f.i && (i < lb || i >= ub):
+				o = append(o, v[i])
 			}
 		}
 		return o, f.i || len(o) > 0

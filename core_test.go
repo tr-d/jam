@@ -18,9 +18,11 @@ func TestMerge(t *testing.T) {
 	}
 
 	for _, s := range ss {
-		o := Merge(s.a, s.b)
-		if !reflect.DeepEqual(o, s.x) {
-			t.Errorf("Expected %v, got %v", s.x, o)
+		j := &Jam{}
+		j.Merge(s.a)
+		j.Merge(s.b)
+		if !reflect.DeepEqual(j.Value(), s.x) {
+			t.Errorf("Expected %v, got %v", s.x, j.Value())
 		}
 	}
 }
@@ -42,9 +44,11 @@ func TestDiff(t *testing.T) {
 	}
 
 	for _, s := range ss {
-		o := Diff(s.a, s.b)
-		if !reflect.DeepEqual(o, s.x) {
-			t.Errorf("Expected %v, got %v", s.x, o)
+		j := &Jam{}
+		j.Diff(s.a)
+		j.Diff(s.b)
+		if !reflect.DeepEqual(j.Value(), s.x) {
+			t.Errorf("Expected %v, got %v", s.x, j.Value())
 		}
 	}
 }
@@ -97,14 +101,71 @@ func TestFilter(t *testing.T) {
 	}
 
 	for _, s := range ss {
-		o := Filter(s.d, s.q)
-		if !reflect.DeepEqual(o, s.x) {
-			t.Errorf("for %q, expected %v, got %v", s.q, s.x, o)
+		j := &Jam{s.d}
+		j.Filter(s.q)
+		if !reflect.DeepEqual(j.Value(), s.x) {
+			t.Errorf("for %q, expected %v, got %v", s.q, s.x, j.Value())
 		}
 	}
 }
 
-func TestRFilter(t *testing.T) {
+func TestFilterI(t *testing.T) {
+	var ss = []struct {
+		q    string
+		d, x interface{}
+	}{
+		{"", true, nil},
+		{"nah", true, true},
+		{"nah", _s{}, _s{}},
+		{"[]", _m{}, _m{}},
+		{"[]", _s{"a", "b", "c"}, _s{}},
+		{"[0]", _s{"a", "b", "c"}, _s{"b", "c"}},
+		{"[1]", _s{"a", "b", "c"}, _s{"a", "c"}},
+		{"foo", _m{"foo": true, "baz": true}, _m{"baz": true}},
+		{"*", _m{"foo": true, "baz": true}, _m{}},
+		{"foo[]", _m{"foo": _s{1, 2, 3}}, _m{"foo": _s{}}},
+		{"foo[:]", _m{"foo": _s{1, 2, 3}}, _m{"foo": _s{}}},
+		{"foo[0]", _m{"foo": _s{1, 2, 3}}, _m{"foo": _s{2, 3}}},
+		{"foo[2]", _m{"foo": _s{1, 2, 3}}, _m{"foo": _s{1, 2}}},
+		{"foo[1:]", _m{"foo": _s{1, 2, 3}}, _m{"foo": _s{1}}},
+		{"foo[:2]", _m{"foo": _s{1, 2, 3}}, _m{"foo": _s{3}}},
+		{"[].x", _s{_m{"x": 1, "y": "y"}, _m{"x": 2, "y": "x"}}, _s{_m{"y": "y"}, _m{"y": "x"}}},
+		{"[1:2].x", _s{_m{"x": 1, "y": "y"}, _m{"x": 2, "y": "x"}}, _s{_m{"x": 1, "y": "y"}, _m{"y": "x"}}},
+		{
+			"[][]",
+			_s{_s{1, 2, 3}, _s{4, 5, 6}, _s{7, 8, 9}},
+			_s{_s{}, _s{}, _s{}},
+		},
+		{
+			"[1:][:2]",
+			_s{_s{1, 2, 3}, _s{4, 5, 6}, _s{7, 8, 9}},
+			_s{_s{1, 2, 3}, _s{6}, _s{9}},
+		},
+		{
+			"foo.foo",
+			_m{"foo": _m{"foo": true, "baz": true}},
+			_m{"foo": _m{"baz": true}},
+		},
+		{
+			"foo.*",
+			_m{"foo": _m{"foo": true, "baz": true}},
+			_m{"foo": _m{}},
+		},
+		{"==1", float64(1), nil},
+		{"[]==blep", _s{"blep", "mlem"}, _s{"mlem"}},
+		{"*==mlem", _m{"0": "blep", "1": "mlem"}, _m{"0": "blep"}},
+	}
+
+	for _, s := range ss {
+		j := &Jam{s.d}
+		j.FilterI(s.q)
+		if !reflect.DeepEqual(j.Value(), s.x) {
+			t.Errorf("for %q, expected %v, got %v", s.q, s.x, j.Value())
+		}
+	}
+}
+
+func TestFilterR(t *testing.T) {
 	var ss = []struct {
 		q    string
 		d, x interface{}
@@ -169,9 +230,83 @@ func TestRFilter(t *testing.T) {
 	}
 
 	for _, s := range ss {
-		o := FilterR(s.d, s.q)
-		if !reflect.DeepEqual(o, s.x) {
-			t.Errorf("for %q, expected %v, got %v", s.q, s.x, o)
+		j := &Jam{s.d}
+		j.FilterR(s.q)
+		if !reflect.DeepEqual(j.Value(), s.x) {
+			t.Errorf("for %q, expected %v, got %v", s.q, s.x, j.Value())
+		}
+	}
+}
+
+func TestFilterIR(t *testing.T) {
+	var ss = []struct {
+		q    string
+		d, x interface{}
+	}{
+		{"", true, nil},
+		{"nah", true, true},
+		{"[]", _s{"a", "b", "c"}, _s{}},
+		{"[0]", _s{"a", "b", "c"}, _s{"b", "c"}},
+		{"[1]", _s{"a", "b", "c"}, _s{"a", "c"}},
+		{"foo", _m{"foo": true, "baz": true}, _m{"baz": true}},
+		{"*", _m{"foo": true, "baz": true}, _m{}},
+		{"foo[]", _m{"foo": _s{1, 2, 3}}, _m{"foo": _s{}}},
+		{"foo[:]", _m{"foo": _s{1, 2, 3}}, _m{"foo": _s{}}},
+		{"foo[0]", _m{"foo": _s{1, 2, 3}}, _m{"foo": _s{2, 3}}},
+		{"foo[2]", _m{"foo": _s{1, 2, 3}}, _m{"foo": _s{1, 2}}},
+		{"foo[1:]", _m{"foo": _s{1, 2, 3}}, _m{"foo": _s{1}}},
+		{"foo[:2]", _m{"foo": _s{1, 2, 3}}, _m{"foo": _s{3}}},
+		{"[].x", _s{_m{"x": 1, "y": "y"}, _m{"x": 2, "y": "x"}}, _s{_m{"y": "y"}, _m{"y": "x"}}},
+		{"[1:2].x", _s{_m{"x": 1, "y": "y"}, _m{"x": 2, "y": "x"}}, _s{_m{"x": 1, "y": "y"}, _m{"y": "x"}}},
+		{
+			"[][]",
+			_s{_s{1, 2, 3}, _s{4, 5, 6}, _s{7, 8, 9}},
+			_s{_s{}, _s{}, _s{}},
+		},
+		{
+			"[1:][:2]",
+			_s{_s{1, 2, 3}, _s{4, 5, 6}, _s{7, 8, 9}},
+			_s{_s{1, 2, 3}, _s{6}, _s{9}},
+		},
+		{
+			"foo.foo",
+			_m{"foo": _m{"foo": true, "baz": true}},
+			_m{"foo": _m{"baz": true}},
+		},
+		{
+			"foo.*",
+			_m{"foo": _m{"foo": true, "baz": true}},
+			_m{"foo": _m{}},
+		},
+		{
+			"blep",
+			_m{"foo": _m{"blep": true, "baz": true}},
+			_m{"foo": _m{"baz": true}},
+		},
+		{
+			"mlem",
+			_s{_m{"mlem": true, "baz": true}},
+			_s{_m{"baz": true}},
+		},
+		{
+			"[]",
+			_s{_s{1, 2, 3}, _s{4, 5, 6}, _s{7, 8, 9}},
+			_s{},
+		},
+		{
+			"[1:]",
+			_s{_s{1, 2, 3}, _s{4, 5, 6}, _s{7, 8, 9}},
+			_s{_s{1, 2, 3}},
+		},
+		{"==blep", _s{"blep", "mlem"}, _s{"mlem"}},
+		{"==mlem", _m{"0": "blep", "1": "mlem"}, _m{"0": "blep"}},
+	}
+
+	for _, s := range ss {
+		j := &Jam{s.d}
+		j.FilterIR(s.q)
+		if !reflect.DeepEqual(j.Value(), s.x) {
+			t.Errorf("for %q, expected %v, got %v", s.q, s.x, j.Value())
 		}
 	}
 }

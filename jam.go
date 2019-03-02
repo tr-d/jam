@@ -140,14 +140,16 @@ func (j *Jam) Merge(r interface{}) {
 }
 
 func (j *Jam) Exec(dst io.Writer, src io.Reader) error {
-	tpl := template.New("")
 	var bb bytes.Buffer
-	io.Copy(&bb, src)
-	tpl, err := tpl.Parse(bb.String())
+	_, err := io.Copy(&bb, src)
 	if err != nil {
 		return err
 	}
-	return tpl.Execute(dst, j.v)
+	t, err := template.New("").Parse(bb.String())
+	if err != nil {
+		return err
+	}
+	return t.Execute(dst, j.v)
 }
 
 // Query applies the Query function to the Jam's value.
