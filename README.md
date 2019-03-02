@@ -1,5 +1,7 @@
 # jam
 
+[![Build Status](https://travis-ci.org/tr-d/jam.svg?branch=master)](https://travis-ci.org/tr-d/jam)
+
 if structured data is scones and you are clotted cream, this is jam
 
 
