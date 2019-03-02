@@ -4,7 +4,7 @@ die() { echo "oh noes! $*"; exit 1; }
 
 h() {
         if [ "$TRAVIS" = true ]; then
-                printf "travis_fold:start:%s\033[33;1m%s\033[0m" "$1" "$2"
+                printf "travis_fold:start:%s\033[33;1m%s\033[0m\n" "$1" "$2"
         else
                 printf "# %s\n" "$2"
         fi
@@ -12,7 +12,7 @@ h() {
 
 f() {
         if [ "$TRAVIS" = true ]; then
-                printf "\ntravis_fold:end:%s\r" "$1"
+                printf "\ntravis_fold:end:%s\n" "$1"
         else
                 printf "\n"
         fi
