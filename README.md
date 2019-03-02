@@ -6,11 +6,28 @@
 if structured data is scones and you are clotted cream, this is jam
 
 
+## about
+
+Jam is a structured data manipulation tool.
+- Decode from yaml, json or toml.
+- Merge and diff multiple sources.
+- Apply filters and jmespath queries.
+- Execute go text templates.
+- Encode yaml, json, toml, go or struct.
+
+Interacting with structured data should be more pleasant for shell and go programmers.
+
+
 ## get
 
 ```bash
 go get -tags pretty github.com/tr-d/jam/cmd/jam
 ```
+
+## why pretty
+
+Because :rainbow:! But the code that makes the pretty colors weighs approximately
+ten billion tons. If you don't need them the binary is a fair bit smaller.
 
 
 ## use
@@ -113,6 +130,21 @@ type T struct {
         DocumentationUrl string `json:"documentation_url"`
         Message          string `json:"message"`
 }
+```
+
+
+### script use
+
+List releases for `tr-d` repositories.
+
+```bash
+curl -s https://api.github.com/orgs/tr-d/repos \
+| jam -x '{{range .}}{{println .name}}{{end}}' \
+| while read -r repo; do
+        echo "# releases for $repo"
+        curl -s "https://api.github.com/repos/tr-d/$repo/releases" \
+        | jam -x '{{range .}}{{println .name}}{{else}}none (μ_μ){{println}}{{end}}'
+done
 ```
 
 
