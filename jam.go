@@ -150,11 +150,6 @@ func (j *Jam) Exec(dst io.Writer, src io.Reader) error {
 	return tpl.Execute(dst, j.v)
 }
 
-// DropNil applies the DropNil function to the Jam's value.
-func (j *Jam) DropNil() {
-	j.v = DropNil(j.v)
-}
-
 // Query applies the Query function to the Jam's value.
 func (j *Jam) Query(q string) {
 	j.v = Query(j.v, q)

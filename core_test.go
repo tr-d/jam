@@ -191,13 +191,9 @@ func TestDropNil(t *testing.T) {
 	}
 
 	for _, s := range ss {
-		o := DropNil(s.a)
+		o := FilterIR(s.a, "==null")
 		if !reflect.DeepEqual(o, s.x) {
 			t.Errorf("expected %v, got %v", s.x, o)
-		}
-		o = FilterIR(s.a, "==null")
-		if !reflect.DeepEqual(o, s.x) {
-			t.Errorf("d/rf expected %v, got %v", s.x, o)
 		}
 	}
 }

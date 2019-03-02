@@ -109,7 +109,6 @@ type filterer struct {
 }
 
 func (f filterer) filter(v interface{}, path string) (interface{}, bool) {
-	// fmt.Println(path, "\t", v)
 	if path == "" {
 		if f.i {
 			return nil, false
@@ -228,32 +227,6 @@ func Query(v interface{}, s string) interface{} {
 	return v
 }
 
-// DropNil drops keys with value nil.
-func DropNil(a interface{}) interface{} {
-	switch a := a.(type) {
-	case map[string]interface{}:
-		b := make(map[string]interface{})
-		for k, v := range a {
-			_v := DropNil(v)
-			if _v != nil {
-				b[k] = _v
-			}
-		}
-		return b
-	case []interface{}:
-		b := []interface{}{}
-		for _, v := range a {
-			_v := DropNil(v)
-			if _v != nil {
-				b = append(b, _v)
-			}
-		}
-		return b
-	default:
-		return a
-	}
-}
-
 // goStruct writes a go struct def to w
 func goStruct(w io.Writer, v interface{}) {
 	switch v := v.(type) {
@@ -338,7 +311,6 @@ func goCase(s string) string {
 var (
 	nextKeyRe   = regexp.MustCompile(`^([^\.\[=]+)\.?`)
 	nextSliceRe = regexp.MustCompile(`^\[(\d*)(?:(:?)(\d*))?\]\.?`)
-	// nextValueRe = regexp.MustCompile(`^\[==([^\]]+)\]\.?`)
 	nextValueRe = regexp.MustCompile(`^==(.+)$`)
 )
 
