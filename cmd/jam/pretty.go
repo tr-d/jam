@@ -10,8 +10,6 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-const prettyVersion = "-pretty"
-
 func banner() {
 	var b, t string
 	switch arg0 {
@@ -59,4 +57,18 @@ func halpsPrint(s string) {
 			fmt.Fprintln(os.Stderr, "\x1b[38;2;183;232;240m"+l+"\x1b[0m")
 		}
 	}
+}
+
+func versionPrint() {
+	if !terminal.IsTerminal(int(os.Stdout.Fd())) {
+		fmt.Println(arg0 + "-" + version + "-pretty")
+		return
+	}
+	var (
+		s = "\x1b[38;2;251;249;245m-\x1b[0m"
+		a = "\x1b[38;2;255;175;199m" + arg0 + "\x1b[0m"
+		v = "\x1b[38;2;255;175;199m" + version + "\x1b[0m"
+		p = "\x1b[38;2;255;175;199mpretty\x1b[0m"
+	)
+	fmt.Println(a + s + v + s + p)
 }

@@ -7,8 +7,6 @@ import (
 	"os"
 )
 
-const prettyVersion = "-ugly"
-
 func banner() {
 	var b, t string
 	switch arg0 {
@@ -39,4 +37,8 @@ func halpsPrint(s string) {
 	fmt.Fprintf(os.Stderr, "Halps %[1]s:\n", arg0)
 	banner()
 	fmt.Fprintf(os.Stderr, s, arg0)
+}
+
+func versionPrint() {
+	fmt.Println(arg0 + "-" + version)
 }

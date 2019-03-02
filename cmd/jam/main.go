@@ -22,38 +22,18 @@ type op struct {
 	fn *func(*jam.Jam, *pretty.Buffer, string) error
 }
 
-// opfs is a slice of op flag defs
-var opfs = []struct {
-	n  string
-	fn *func(*jam.Jam, *pretty.Buffer, string) error
-	u  string
-}{
-	{"d", &opdiff, "diff `in`put (-, @file, string) (yaml, json, toml)"},
-	{"m", &opmerg, "merge `in`put (-, @file, string) (yaml, json, toml)"},
-	{"x", &opexec, "exec template `in`put to buffer (-, @file, string) (text/template)"},
-	{},
-	{"e", &openc, "`enc`ode to buffer (yaml, json, toml, go, struct)"},
-	{"o", &opout, "write `out` buffer (-, file)"},
-	{},
-	{"f", &opflt, "`filt`er plain"},
-	{"F", &opiflt, "`filt`er inverted"},
-	{"q", &opqry, "jmespath `query`"},
-	{"r", &oprflt, "`filt`er recursive"},
-	{"R", &opirflt, "`filt`er recursive inverted"},
-}
-
-// opsv is a flag.Value that appends op to slice of ops.
-type opsv struct {
+// opsvalue is a flag.Value that appends op to slice of ops.
+type opsvalue struct {
 	ops *[]op
 	fn  *func(*jam.Jam, *pretty.Buffer, string) error
 }
 
-func (v *opsv) Set(s string) error {
+func (v *opsvalue) Set(s string) error {
 	*v.ops = append(*v.ops, op{p: s, fn: v.fn})
 	return nil
 }
 
-func (v *opsv) String() string {
+func (v *opsvalue) String() string {
 	if v.ops == nil {
 		return "[]"
 	}
@@ -156,17 +136,17 @@ var (
 		return nil
 	}
 
-	opiflt = func(j *jam.Jam, b *pretty.Buffer, p string) error {
+	opflti = func(j *jam.Jam, b *pretty.Buffer, p string) error {
 		j.FilterI(p)
 		return nil
 	}
 
-	oprflt = func(j *jam.Jam, b *pretty.Buffer, p string) error {
+	opfltr = func(j *jam.Jam, b *pretty.Buffer, p string) error {
 		j.FilterR(p)
 		return nil
 	}
 
-	opirflt = func(j *jam.Jam, b *pretty.Buffer, p string) error {
+	opfltir = func(j *jam.Jam, b *pretty.Buffer, p string) error {
 		j.FilterIR(p)
 		return nil
 	}
@@ -202,14 +182,33 @@ func decode(rc io.ReadCloser, err error) (interface{}, error) {
 	return v, err
 }
 
+var opflags = []struct {
+	name  string
+	fn    *func(*jam.Jam, *pretty.Buffer, string) error
+	usage string
+}{
+	{"d", &opdiff, "diff `in`put (-, @file, string) (yaml, json, toml)"},
+	{"m", &opmerg, "merge `in`put (-, @file, string) (yaml, json, toml)"},
+	{"x", &opexec, "exec template `in`put to buffer (-, @file, string) (text/template)"},
+	{},
+	{"e", &openc, "`enc`ode to buffer (yaml, json, toml, go, struct)"},
+	{"o", &opout, "write `out` buffer (-, file)"},
+	{},
+	{"f", &opflt, "`filt`er plain"},
+	{"F", &opflti, "`filt`er inverted"},
+	{"q", &opqry, "jmespath `query`"},
+	{"r", &opfltr, "`filt`er recursive"},
+	{"R", &opfltir, "`filt`er recursive inverted"},
+}
+
 func main() {
 	var (
 		h, x, v bool
 		ops     = []op{}
 	)
-	for _, o := range opfs {
+	for _, o := range opflags {
 		if o.fn != nil {
-			flag.Var(&opsv{ops: &ops, fn: o.fn}, o.n, o.u)
+			flag.Var(&opsvalue{&ops, o.fn}, o.name, o.usage)
 		}
 	}
 	flag.BoolVar(&h, "H", false, "")
@@ -226,7 +225,7 @@ func main() {
 		halpsPrint(exemples)
 		os.Exit(2)
 	case v:
-		fmt.Println(arg0 + "-" + version + prettyVersion)
+		versionPrint()
 		return
 	}
 
@@ -460,10 +459,10 @@ Convert to struct:
 func usage() {
 	fo := flag.CommandLine.Output()
 	fmt.Fprintf(fo, halps, arg0)
-	for _, o := range opfs {
+	for _, o := range opflags {
 		if o.fn != nil {
-			n, u := flag.UnquoteUsage(&flag.Flag{Usage: o.u})
-			fmt.Fprintf(fo, "  -%s <%s>\n    \t%s", o.n, n, u)
+			t, u := flag.UnquoteUsage(&flag.Flag{Usage: o.usage})
+			fmt.Fprintf(fo, "  -%s <%s>\n    \t%s", o.name, t, u)
 		}
 		fmt.Fprintln(fo)
 	}
