@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -70,9 +71,29 @@ func testToml(t *testing.T, u interface{}) {
 }
 
 func TestDecodeFail(t *testing.T) {
+	ss := []string{
+		"=",
+		"foo:\n\tbaz: true",
+	}
 	var v interface{}
-	if err := NewDecoder(bytes.NewReader([]byte{'='})).Decode(v); err == nil {
-		t.Errorf("Expected error got none.")
+	for i, s := range ss {
+		if err := NewDecoder(strings.NewReader(s)).Decode(&v); err == nil {
+			t.Errorf("Expected error got none [%d].", i)
+		}
+	}
+}
+
+func TestDecodePass(t *testing.T) {
+	ss := []string{
+		"",
+		"foo:\n  baz: true",
+		"{\n\t\"x\":1\n}",
+	}
+	var v interface{}
+	for i, s := range ss {
+		if err := NewDecoder(strings.NewReader(s)).Decode(&v); err != nil {
+			t.Errorf("Got error [%d]: %s", i, err)
+		}
 	}
 }
 

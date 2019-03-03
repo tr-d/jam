@@ -46,11 +46,9 @@ func (d *Decoder) Decode(v interface{}) error {
 	case lToml:
 		_, err = toml.Decode(string(b), &u)
 	default:
-		if a.lang != lYaml {
-			// this step protects json from yaml specific errs
-			if err = json.NewDecoder(d.r).Decode(u); err == nil {
-				break
-			}
+		// this step protects json from yaml specific errs
+		if err = json.NewDecoder(bytes.NewReader(b)).Decode(&u); err == nil {
+			break
 		}
 		if len(a.errs) > 0 {
 			return a.nerrs(6)
@@ -416,6 +414,9 @@ func bloop(b []byte, fns ...func(byte, ref)) error {
 // remap remaps data onto a type using "jam" struct tags. The result will be json decodable
 // into t. Struct tags are evaluated as jmespath expressions.
 func remap(data interface{}, t reflect.Type) (interface{}, error) {
+	if data == nil || t == nil {
+		return nil, nil
+	}
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}

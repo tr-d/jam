@@ -390,7 +390,7 @@ Implicit Flags:
 
   is equivalent to
 
-  	%[1]s -m @file1 -m @file1 -q blep
+  	%[1]s -m @file1 -m @file2 -q blep
 
   or, merge file1, merge file2, query blep.
 `
