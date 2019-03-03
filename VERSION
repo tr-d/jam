@@ -1,3 +1,11 @@
+v0.9.3
+
+- expand decoder tests
+- fix json pathway in decoder
+- expand filter tests
+- improve filter
+
+
 v0.9.2
 
 - remove DropNil which is superceded by FilterIR
