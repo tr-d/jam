@@ -1,6 +1,7 @@
 package main // import "github.com/tr-d/jam/cmd/jam"
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -74,6 +75,9 @@ var (
 			b.Json()
 			e = e.AsJson()
 		case p == "t" || p == "toml":
+			if len(j.Values()) > 1 {
+				return errors.New("multiple objects were decoded from json or yaml, encoding as toml is not supported")
+			}
 			b.Toml()
 			e = e.AsToml()
 		case p == "g" || p == "go":
@@ -277,7 +281,7 @@ func main() {
 	for _, o := range ops {
 		f := *o.fn
 		if err := f(j, &pb, o.p); err != nil {
-			log.Fatal(err)
+			log.Fatal("Error: ", err)
 		}
 	}
 }

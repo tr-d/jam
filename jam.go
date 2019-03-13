@@ -78,6 +78,8 @@ func (d *Decoder) Decode(v interface{}) error {
 				return a.nerrs(6)
 			}
 			b = bytes.TrimPrefix(b, []byte("---\n"))
+			// \n---\n can only be a yaml document separator
+			// this is a safe split, apparently
 			bs := bytes.SplitN(b, []byte("\n---\n"), 2)
 			err = yaml.Unmarshal(bs[0], &u)
 			if len(bs) > 1 {
@@ -454,9 +456,9 @@ func asYaml(w io.Writer, v interface{}) error {
 	return err
 }
 
-// bloop calls fns with each byte of b that is unquoted and unescaped,
-// and the line and column number
-func bloop(b []byte, fns ...func(byte, ref)) error {
+// bloop calls funcs with each byte of b that is unquoted and unescaped,
+// and a reference to the line and column number
+func bloop(b []byte, funcs ...func(byte, ref)) error {
 	var escape, squote, dquote bool
 	line, col := 1, 0
 	for _, c := range b {
@@ -481,7 +483,7 @@ func bloop(b []byte, fns ...func(byte, ref)) error {
 		case squote || dquote:
 
 		default:
-			for _, fn := range fns {
+			for _, fn := range funcs {
 				fn(c, ref{l: line, c: col})
 			}
 		}

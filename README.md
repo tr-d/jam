@@ -64,6 +64,7 @@ jam 'cute = "blep"'
 jam -m 'cute = "blep"' -e yaml -o -
 
 # output
+---
 cute: blep
 ```
 
@@ -100,6 +101,7 @@ jam -m '{"cute":{"blep":3,"mlem":5}}' -f cute.blep
 jam -m '{"cute":{"blep":3,"mlem":5}}' -f cute.blep -e yaml -o -
 
 # output
+---
 cute:
   blep: 3
 ```
@@ -161,8 +163,19 @@ import "github.com/tr-d/jam"
 err := jam.NewDecoder(reader).Decode(&v)
 ```
 
+Decode many json objects or yaml documents.
 
-Go **struct tags** labelled `jam` are evaluated with jmespath.
+```go
+d := jam.NewDecoder(reader)
+for {
+	err := d.Decode(&v)
+	if jam.IsNoMore(err) {
+		break
+	}
+}
+```
+
+Use `jam` **struct tags** to decode with a jmespath transformation.
 
 ```go
 v := struct {
@@ -177,10 +190,6 @@ err := jam.NewDecoder(reader).Decode(&v)
 Jam struct tags work on the decode side only. They are built to play
 nice with `json` struct tags. You can use a combination of either or both.
 In the case of both, the `jam` struct tag is used by the decoder.
-
-Note: actually, under the hood, the value being decoded is converted to be
-json decodable, so both `json` and `jam` tags are in play.
-
 
 **Encoder** encodes to yaml, json, toml, go syntax or struct.
 
