@@ -23,7 +23,9 @@ import (
 // Decoder reads yaml, json, or toml from a reader, "jam" struct tags are
 // evaluated as jmespath expressions.
 type Decoder struct {
-	r io.Reader
+	r    io.Reader
+	jd   *json.Decoder
+	once bool
 }
 
 // NewDecoder creates a Decoder for r.
@@ -35,29 +37,56 @@ func NewDecoder(r io.Reader) *Decoder {
 // pointed to by v. Struct tags labelled "jam" are evaluated as jmespath
 // expressions.
 func (d *Decoder) Decode(v interface{}) error {
-	b, err := ioutil.ReadAll(d.r)
-	if err != nil {
-		return err
-	}
-
-	var u interface{}
-	a := analyze(b)
-	switch a.lang {
-	case lToml:
-		_, err = toml.Decode(string(b), &u)
+	defer func() { d.once = true }()
+	var (
+		err error
+		u   interface{}
+	)
+	switch {
+	case d.jd != nil:
+		if !d.jd.More() {
+			return ErrNoMore{}
+		}
+		if err := d.jd.Decode(&u); err != nil {
+			return err
+		}
 	default:
-		// this step protects json from yaml specific errs
-		if err = json.NewDecoder(bytes.NewReader(b)).Decode(&u); err == nil {
-			break
+		b, err := ioutil.ReadAll(d.r)
+		if err != nil {
+			return err
 		}
-		if len(a.errs) > 0 {
-			return a.nerrs(6)
+		if d.once && len(b) == 0 {
+			return ErrNoMore{}
 		}
-		err = yaml.Unmarshal(b, &u)
-	}
-
-	if err != nil {
-		return err
+		a := analyze(b)
+		switch a.lang {
+		case lToml:
+			_, err = toml.Decode(string(b), &u)
+			if err != nil {
+				return err
+			}
+		default:
+			if !d.once {
+				// this step protects json from yaml specific errs
+				jd := json.NewDecoder(bytes.NewReader(b))
+				if err = jd.Decode(&u); err == nil {
+					d.jd = jd
+					break
+				}
+			}
+			if len(a.errs) > 0 {
+				return a.nerrs(6)
+			}
+			b = bytes.TrimPrefix(b, []byte("---\n"))
+			bs := bytes.SplitN(b, []byte("\n---\n"), 2)
+			err = yaml.Unmarshal(bs[0], &u)
+			if len(bs) > 1 {
+				d.r = bytes.NewReader(bs[1])
+			}
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	u, err = remap(u, reflect.TypeOf(v))
@@ -119,22 +148,45 @@ func (e *Encoder) Encode(v interface{}) error {
 	return e.encode(e.w, v)
 }
 
+type ErrNoMore struct{}
+
+func (_ ErrNoMore) Error() string {
+	return "no more to decode"
+}
+
+func IsNoMore(e error) bool {
+	_, ok := e.(ErrNoMore)
+	return ok
+}
+
 // Jam accumulates operations on a data tree.
 type Jam struct {
-	v interface{}
+	vs []interface{}
+}
+
+func (j *Jam) atLeast(length int) {
+	for i := len(j.vs); i < length; i++ {
+		j.vs = append(j.vs, interface{}(nil))
+	}
 }
 
 // NewJam creates a Jam.
-func NewJam(v interface{}) *Jam {
-	return &Jam{v: v}
+func NewJam(vs ...interface{}) *Jam {
+	return &Jam{vs}
 }
 
-func (j *Jam) Diff(r interface{}) {
-	j.v = Diff(j.v, r)
+func (j *Jam) Diff(vs ...interface{}) {
+	j.atLeast(len(vs))
+	for i, v := range vs {
+		j.vs[i] = Diff(j.vs[i], v)
+	}
 }
 
-func (j *Jam) Merge(r interface{}) {
-	j.v = Merge(j.v, r)
+func (j *Jam) Merge(vs ...interface{}) {
+	j.atLeast(len(vs))
+	for i, v := range vs {
+		j.vs[i] = Merge(j.vs[i], v)
+	}
 }
 
 func (j *Jam) Exec(dst io.Writer, src io.Reader) error {
@@ -147,37 +199,59 @@ func (j *Jam) Exec(dst io.Writer, src io.Reader) error {
 	if err != nil {
 		return err
 	}
-	return t.Execute(dst, j.v)
+	for _, v := range j.vs {
+		if err := t.Execute(dst, v); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Query applies the Query function to the Jam's value.
 func (j *Jam) Query(q string) {
-	j.v = Query(j.v, q)
+	for i := range j.vs {
+		j.vs[i] = Query(j.vs[i], q)
+	}
 }
 
 // Filter applies the Filter function to the Jam's value.
 func (j *Jam) Filter(q string) {
-	j.v = Filter(j.v, q)
+	for i := range j.vs {
+		j.vs[i] = Filter(j.vs[i], q)
+	}
 }
 
 // FilterI applies the FilterI function to the Jam's value.
 func (j *Jam) FilterI(q string) {
-	j.v = FilterI(j.v, q)
+	for i := range j.vs {
+		j.vs[i] = FilterI(j.vs[i], q)
+	}
 }
 
 // FilterR applies the FilterR function to the Jam's value.
 func (j *Jam) FilterR(q string) {
-	j.v = FilterR(j.v, q)
+	for i := range j.vs {
+		j.vs[i] = FilterR(j.vs[i], q)
+	}
 }
 
 // FilterIR applies the FilterIR function to the Jam's value.
 func (j *Jam) FilterIR(q string) {
-	j.v = FilterIR(j.v, q)
+	for i := range j.vs {
+		j.vs[i] = FilterIR(j.vs[i], q)
+	}
 }
 
 // Value returns the Jam's value.
-func (j *Jam) Value() interface{} {
-	return j.v
+func (j *Jam) Value(i int) interface{} {
+	if i >= len(j.vs) {
+		return nil
+	}
+	return j.vs[i]
+}
+
+func (j *Jam) Values() []interface{} {
+	return j.vs
 }
 
 // analysis is the result of lang and error analysis.
@@ -371,6 +445,10 @@ func asYaml(w io.Writer, v interface{}) error {
 	b, err := yaml.Marshal(v)
 	if err != nil {
 		return err
+	}
+	ds := []byte("---\n")
+	if !bytes.HasPrefix(b, ds) {
+		b = append(ds, b...)
 	}
 	_, err = w.Write(b)
 	return err

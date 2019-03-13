@@ -59,6 +59,7 @@ func ExampleEncodeStructAsYaml() {
 	}{1, 2}
 	jam.NewEncoder(os.Stdout).Encode(x)
 	// Output:
+	// ---
 	// A: 1
 	// B: 2
 }

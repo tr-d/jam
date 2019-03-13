@@ -97,6 +97,34 @@ func TestDecodePass(t *testing.T) {
 	}
 }
 
+func TestDecodeMany(t *testing.T) {
+	ss := []struct {
+		s string
+		x interface{}
+	}{
+		{`"blep""mlem"`, []interface{}{"blep", "mlem"}},
+		{"---\nblep\n---\nmlem\n", []interface{}{"blep", "mlem"}},
+	}
+	for i, s := range ss {
+		d := NewDecoder(strings.NewReader(s.s))
+		vs := []interface{}{}
+		for j := 0; true; j++ {
+			var v interface{}
+			err := d.Decode(&v)
+			if IsNoMore(err) {
+				break
+			}
+			if err != nil {
+				t.Errorf("Got error [%d][%d]: %s", i, j, err)
+			}
+			vs = append(vs, v)
+		}
+		if !reflect.DeepEqual(vs, s.x) {
+			t.Errorf("For [%d] expected %+v, got %+v", i, s.x, vs)
+		}
+	}
+}
+
 func TestStruct(t *testing.T) {
 	var ss = []struct {
 		i interface{}

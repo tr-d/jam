@@ -21,8 +21,8 @@ func TestMerge(t *testing.T) {
 		j := &Jam{}
 		j.Merge(s.a)
 		j.Merge(s.b)
-		if !reflect.DeepEqual(j.Value(), s.x) {
-			t.Errorf("Expected %v, got %v", s.x, j.Value())
+		if !reflect.DeepEqual(j.Value(0), s.x) {
+			t.Errorf("Expected %v, got %v", s.x, j.Value(0))
 		}
 	}
 }
@@ -47,8 +47,8 @@ func TestDiff(t *testing.T) {
 		j := &Jam{}
 		j.Diff(s.a)
 		j.Diff(s.b)
-		if !reflect.DeepEqual(j.Value(), s.x) {
-			t.Errorf("Expected %v, got %v", s.x, j.Value())
+		if !reflect.DeepEqual(j.Value(0), s.x) {
+			t.Errorf("Expected %v, got %v", s.x, j.Value(0))
 		}
 	}
 }
@@ -101,10 +101,10 @@ func TestFilter(t *testing.T) {
 	}
 
 	for _, s := range ss {
-		j := &Jam{s.d}
+		j := NewJam(s.d)
 		j.Filter(s.q)
-		if !reflect.DeepEqual(j.Value(), s.x) {
-			t.Errorf("for %q, expected %v, got %v", s.q, s.x, j.Value())
+		if !reflect.DeepEqual(j.Value(0), s.x) {
+			t.Errorf("for %q, expected %v, got %v", s.q, s.x, j.Value(0))
 		}
 	}
 }
@@ -157,10 +157,10 @@ func TestFilterI(t *testing.T) {
 	}
 
 	for _, s := range ss {
-		j := &Jam{s.d}
+		j := NewJam(s.d)
 		j.FilterI(s.q)
-		if !reflect.DeepEqual(j.Value(), s.x) {
-			t.Errorf("for %q, expected %v, got %v", s.q, s.x, j.Value())
+		if !reflect.DeepEqual(j.Value(0), s.x) {
+			t.Errorf("for %q, expected %v, got %v", s.q, s.x, j.Value(0))
 		}
 	}
 }
@@ -230,10 +230,10 @@ func TestFilterR(t *testing.T) {
 	}
 
 	for _, s := range ss {
-		j := &Jam{s.d}
+		j := NewJam(s.d)
 		j.FilterR(s.q)
-		if !reflect.DeepEqual(j.Value(), s.x) {
-			t.Errorf("for %q, expected %v, got %v", s.q, s.x, j.Value())
+		if !reflect.DeepEqual(j.Value(0), s.x) {
+			t.Errorf("for %q, expected %v, got %v", s.q, s.x, j.Value(0))
 		}
 	}
 }
@@ -303,10 +303,10 @@ func TestFilterIR(t *testing.T) {
 	}
 
 	for _, s := range ss {
-		j := &Jam{s.d}
+		j := NewJam(s.d)
 		j.FilterIR(s.q)
-		if !reflect.DeepEqual(j.Value(), s.x) {
-			t.Errorf("for %q, expected %v, got %v", s.q, s.x, j.Value())
+		if !reflect.DeepEqual(j.Value(0), s.x) {
+			t.Errorf("for %q, expected %v, got %v", s.q, s.x, j.Value(0))
 		}
 	}
 }

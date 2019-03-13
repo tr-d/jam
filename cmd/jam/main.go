@@ -85,7 +85,12 @@ var (
 		default:
 			b.Yaml()
 		}
-		return e.Encode(j.Value())
+		for _, v := range j.Values() {
+			if err := e.Encode(v); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 
 	opexec = func(j *jam.Jam, b *pretty.Buffer, p string) error {
@@ -114,20 +119,20 @@ var (
 	}
 
 	opmerg = func(j *jam.Jam, b *pretty.Buffer, p string) error {
-		v, err := decode(source(p))
+		vs, err := decode(source(p))
 		if err != nil {
 			return fmt.Errorf("merge: %s", err)
 		}
-		j.Merge(v)
+		j.Merge(vs...)
 		return nil
 	}
 
 	opdiff = func(j *jam.Jam, b *pretty.Buffer, p string) error {
-		v, err := decode(source(p))
+		vs, err := decode(source(p))
 		if err != nil {
 			return fmt.Errorf("diff: %s", err)
 		}
-		j.Diff(v)
+		j.Diff(vs...)
 		return nil
 	}
 
@@ -172,14 +177,25 @@ func source(s string) (io.ReadCloser, error) {
 	return ioutil.NopCloser(strings.NewReader(s)), nil
 }
 
-func decode(rc io.ReadCloser, err error) (interface{}, error) {
-	var v interface{}
+func decode(rc io.ReadCloser, err error) ([]interface{}, error) {
+	vs := []interface{}{}
 	if err != nil {
-		return v, err
+		return vs, err
 	}
-	err = jam.NewDecoder(rc).Decode(&v)
-	rc.Close()
-	return v, err
+	defer rc.Close()
+	d := jam.NewDecoder(rc)
+	for {
+		var v interface{}
+		err := d.Decode(&v)
+		if jam.IsNoMore(err) {
+			break
+		}
+		if err != nil {
+			return vs, err
+		}
+		vs = append(vs, v)
+	}
+	return vs, nil
 }
 
 var opflags = []struct {
