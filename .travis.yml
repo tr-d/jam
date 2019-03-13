@@ -1,6 +1,10 @@
 language: generic
 services: [docker]
 
+branches:
+  only:
+    - master
+
 script:
   - bin/docker.sh bin/build.sh
 
