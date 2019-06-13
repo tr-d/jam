@@ -85,3 +85,44 @@ func ExampleStructTagsPlus() {
 	jam.NewEncoder(os.Stdout).AsJson().Encode(v)
 	// Output: {"as":["blep","mlem"],"bs":[1,-1]}
 }
+
+func ExampleDecoderMerge() {
+	a := strings.NewReader(`a: blep`)
+	b := strings.NewReader(`{"b":"blep"}`)
+	c := strings.NewReader(`b = "mlem"`)
+	v := struct {
+		A string `json:"a"`
+		B string `json:"b"`
+	}{}
+	jam.NewDecoder(a, b, c).Decode(&v)
+	fmt.Printf("%+v\n", v)
+	// Output: {A:blep B:mlem}
+}
+
+func ExampleFileDecoderMerge() {
+	ss := []string{
+		"testdata/standard.yml",
+		"testdata/moar.json",
+		"testdata/extra.toml",
+	}
+	v := struct {
+		Thing  string `jam:"config.thing"`
+		Other  string `jam:"config.otherThing"`
+		Third  string `jam:"config.thirdThing"`
+		Number int    `json:"importantNumber"`
+	}{}
+	d, err := jam.NewFileDecoder(ss...)
+	if err != nil {
+		fmt.Fprint(os.Stderr, err)
+	}
+	if err := d.Decode(&v); err != nil {
+		fmt.Fprint(os.Stderr, err)
+	}
+	d.Close()
+	fmt.Printf("thing is %s\nother thing is %s\nthird thing is %s\nimportant number is %d\n", v.Thing, v.Other, v.Third, v.Number)
+	// Output:
+	// thing is moar thing, not default, moar
+	// other thing is default other thing
+	// third thing is totes extra not even slightly default
+	// important number is 57054
+}

@@ -1,0 +1,9 @@
+---
+config:
+  thing: default thing
+  otherThing: default other thing
+  thirdThing: default third thing
+
+otherConfig:
+  alsoThing: whatever that is
+  number: 0

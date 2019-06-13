@@ -12,6 +12,7 @@ import (
 	"go/format"
 	"io"
 	"io/ioutil"
+	"os"
 	"reflect"
 	"text/template"
 
@@ -20,23 +21,23 @@ import (
 	jmespath "github.com/jmespath/go-jmespath"
 )
 
-// Decoder reads yaml, json, or toml from a reader, "jam" struct tags are
+// decoder reads yaml, json, or toml from a reader, "jam" struct tags are
 // evaluated as jmespath expressions.
-type Decoder struct {
+type decoder struct {
 	r    io.Reader
 	jd   *json.Decoder
 	once bool
 }
 
-// NewDecoder creates a Decoder for r.
-func NewDecoder(r io.Reader) *Decoder {
-	return &Decoder{r: r}
+// newDecoder creates a decoder for r.
+func newDecoder(r io.Reader) *decoder {
+	return &decoder{r: r}
 }
 
 // Decode json, yaml, or toml from the reader and store the result in the value
-// pointed to by v. Struct tags labelled "jam" are evaluated as jmespath
+// pointed to by v. Struct tags labeled "jam" are evaluated as jmespath
 // expressions.
-func (d *Decoder) Decode(v interface{}) error {
+func (d *decoder) Decode(v interface{}) error {
 	defer func() { d.once = true }()
 	var (
 		err error
@@ -96,12 +97,69 @@ func (d *Decoder) Decode(v interface{}) error {
 		return err
 	}
 
-	bb := bytes.NewBuffer([]byte{})
-	if err := NewEncoder(bb).AsJson().Encode(u); err != nil {
+	var bb bytes.Buffer
+	if err := NewEncoder(&bb).AsJson().Encode(u); err != nil {
 		return err
 	}
 
-	return json.NewDecoder(bb).Decode(v)
+	return json.NewDecoder(&bb).Decode(v)
+}
+
+// Decoder reads yaml, json, or toml from one or more readers.  When used
+// with multiple readers, results from each reader are merged with preference
+// to the right or higher index.
+//
+// Struct tags labeled "jam" can be employed to decode using jmespath
+// expressions. Struct tags labeled "json" are also respected.
+type Decoder struct {
+	ds []*decoder
+}
+
+// NewDecoder creates a new Decoder using one or more readers.  When used
+// with multiple readers, results from each reader are merged with preference
+// to the right or higher index.
+func NewDecoder(rs ...io.Reader) *Decoder {
+	ds := make([]*decoder, len(rs))
+	for i := range rs {
+		ds[i] = &decoder{r: rs[i]}
+	}
+	return &Decoder{ds}
+}
+
+// Decode reads one json object, or one yaml document, or toml from each of
+// the Decoder's readers.  When used with multiple readers, results from
+// each reader are merged with preference to the right or higher index.
+// The result of the merge is encoded to json and then finally decoded into v.
+// Decode returns ErrNoMore when every reader is exhausted.
+//
+// Struct tags labeled "jam" can be employed to decode using jmespath
+// expressions. Struct tags labeled "json" are also respected.
+func (d *Decoder) Decode(v interface{}) error {
+	var (
+		mv interface{}
+		nm int
+	)
+	for i, d := range d.ds {
+		var v interface{}
+		err := d.Decode(&v)
+		if IsNoMore(err) {
+			nm++
+			continue
+		}
+		if err != nil {
+			return errSauce{i, err}
+		}
+		mv = Merge(mv, v)
+	}
+	if nm == len(d.ds) {
+		return ErrNoMore{}
+	}
+
+	var bb bytes.Buffer
+	if err := NewEncoder(&bb).AsJson().Encode(mv); err != nil {
+		return err
+	}
+	return newDecoder(&bb).Decode(v)
 }
 
 // Encoder writes yaml, json, toml, go syntax, or go struct definition to a
@@ -150,15 +208,78 @@ func (e *Encoder) Encode(v interface{}) error {
 	return e.encode(e.w, v)
 }
 
+type errSauce struct {
+	i   int
+	err error
+}
+
+func (e errSauce) Error() string {
+	return fmt.Sprintf("source %d: %s", e.i, e.err)
+}
+
+// ErrNoMore is returned by the Decoder. It means there was no more to decode.
 type ErrNoMore struct{}
 
 func (_ ErrNoMore) Error() string {
 	return "no more to decode"
 }
 
+// IsNoMore returns true if e is an ErrNoMore.
 func IsNoMore(e error) bool {
 	_, ok := e.(ErrNoMore)
 	return ok
+}
+
+// FileDecoder is a convenience Decoder that takes file paths
+// instead of readers. Files that don't exist are ignored.
+type FileDecoder struct {
+	*Decoder
+	fs []*os.File
+}
+
+// NewFileDecoder creates a FileDecoder using a list of file paths.
+// Files that don't exist are ignored.
+func NewFileDecoder(paths ...string) (*FileDecoder, error) {
+	var (
+		fs = []*os.File{}
+		rs = []io.Reader{}
+	)
+	for _, p := range paths {
+		f, err := os.Open(p)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("source %s: %s", p, err)
+		}
+		fs = append(fs, f)
+		rs = append(rs, f)
+	}
+	return &FileDecoder{NewDecoder(rs...), fs}, nil
+}
+
+// Decode takes one object from each file, merging as it goes. The result
+// is encoded to json and then finally decoded into v. Decoder Decode calls
+// that return ErrNoMore are not merged. Decode returns ErrNoMore when every
+// file is exhausted.
+func (d *FileDecoder) Decode(v interface{}) error {
+	err := d.Decoder.Decode(v)
+	if err != nil {
+		if e, ok := err.(errSauce); ok {
+			return fmt.Errorf("source %s: %s", d.fs[e.i].Name(), e.err)
+		}
+	}
+	return err
+}
+
+// Close closes open files held by the FileDecoder
+func (d *FileDecoder) Close() error {
+	for _, f := range d.fs {
+		if err := f.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Jam accumulates operations on a data tree.
@@ -506,17 +627,21 @@ func remap(data interface{}, t reflect.Type) (interface{}, error) {
 		m := map[string]interface{}{}
 		for i := 0; i < t.NumField(); i++ {
 			f := t.Field(i)
-			x, err := jmespath.Search(f.Tag.Get("jam"), data)
+			n := f.Tag.Get("json")
+			if n == "" {
+				n = f.Name
+			}
+			s := n
+			if t := f.Tag.Get("jam"); t != "" {
+				s = t
+			}
+			x, err := jmespath.Search(s, data)
 			if err != nil {
 				return data, fmt.Errorf("failed to unmarshal into %s: %s", f.Name, err)
 			}
 			x, err = remap(x, f.Type)
 			if err != nil {
 				return data, err
-			}
-			n := f.Tag.Get("json")
-			if n == "" {
-				n = f.Name
 			}
 			m[n] = x
 		}

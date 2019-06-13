@@ -1,0 +1,7 @@
+importantNumber = 57054
+
+[config]
+  thirdThing = "totes extra not even slightly default"
+
+[other-config]
+  cat = "blep"
